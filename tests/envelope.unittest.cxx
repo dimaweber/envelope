@@ -54,7 +54,6 @@ TEST (Envelope, RoundTripBase64Only) {
 
   const auto wrapped = env.wrap(data);
   ASSERT_TRUE(wrapped.has_value( )) << wrapped.error( );
-  // Should actually be base64 text - printable ASCII only.
   for ( const auto b: *wrapped ) {
     EXPECT_TRUE(std::isprint(static_cast<unsigned char>(b)));
   }
@@ -65,10 +64,6 @@ TEST (Envelope, RoundTripBase64Only) {
 }
 
 TEST (Envelope, UrlSafeBase64HasNoPlusSlashOrPadding) {
-  // Encrypt too, so the wrapped bytes are high-entropy and near-certain to
-  // contain at least one '+' or '/' if standard base64 were used instead -
-  // the point of this test is distinguishing "happens to have none of
-  // these characters" from "the url_safe alphabet was actually used".
   envelope::config_t cfg {.base64 = envelope::base64_mode_t::url_safe, .encrypt = true};
   cfg.encrypt_key = test_encrypt_key( );
   const envelope::envelope_t env(cfg);
@@ -88,7 +83,7 @@ TEST (Envelope, UrlSafeBase64HasNoPlusSlashOrPadding) {
 
 TEST (Envelope, RoundTripCompressOnly) {
   const envelope::envelope_t env(envelope::config_t {.base64 = envelope::base64_mode_t::none, .compress = true});
-  const std::string          text(4096, 'x');  // highly repetitive - should compress well
+  const std::string          text(4096, 'x');
   const auto                 data = to_bytes(text);
 
   const auto wrapped = env.wrap(data);
@@ -108,7 +103,6 @@ TEST (Envelope, RoundTripEncryptOnly) {
 
   const auto wrapped = env.wrap(data);
   ASSERT_TRUE(wrapped.has_value( )) << wrapped.error( );
-  // Ciphertext shouldn't contain the plaintext verbatim.
   EXPECT_EQ(to_string(*wrapped).find("secret"), std::string::npos);
 
   const auto unwrapped = env.unwrap(*wrapped);
@@ -124,7 +118,6 @@ TEST (Envelope, RoundTripSignOnly) {
 
   const auto wrapped = env.wrap(data);
   ASSERT_TRUE(wrapped.has_value( )) << wrapped.error( );
-  // Signed-but-not-encrypted: plaintext should still be visible in the wire bytes.
   EXPECT_NE(to_string(*wrapped).find("signed but readable"), std::string::npos);
 
   const auto unwrapped = env.unwrap(*wrapped);
@@ -170,17 +163,14 @@ TEST (Envelope, RejectsTamperedPayloadWhenSigned) {
   auto wrapped = env.wrap(to_bytes("do not touch me"));
   ASSERT_TRUE(wrapped.has_value( )) << wrapped.error( );
 
-  // Flip a bit well inside the payload.
   (*wrapped)[wrapped->size( ) / 2] ^= std::byte {0x01};
 
   const auto unwrapped = env.unwrap(*wrapped);
   EXPECT_FALSE(unwrapped.has_value( ));
 }
 
+/// See hard_decisions_we_did/06-envelope-layer-order.md
 TEST (Envelope, RejectsTamperedMaskWhenSigned) {
-  // The downgrade-attack case: flipping the mask byte (e.g. to turn the
-  // sign bit off) must be caught by signature verification too, since the
-  // mask is itself covered by the signature - not just the payload.
   envelope::config_t cfg {.base64 = envelope::base64_mode_t::none, .sign = true};
   cfg.sign_key = test_sign_key( );
   const envelope::envelope_t env(cfg);
@@ -245,7 +235,7 @@ TEST (Envelope, RejectsMissingSignKeyOnUnwrapOfSignedBlob) {
   write_cfg.sign_key = test_sign_key( );
   const envelope::envelope_t writer(write_cfg);
 
-  const envelope::envelope_t reader(envelope::config_t {.base64 = envelope::base64_mode_t::none});  // no sign_key configured
+  const envelope::envelope_t reader(envelope::config_t {.base64 = envelope::base64_mode_t::none});
 
   const auto wrapped = writer.wrap(to_bytes("payload"));
   ASSERT_TRUE(wrapped.has_value( )) << wrapped.error( );
@@ -259,7 +249,7 @@ TEST (Envelope, RejectsMissingEncryptKeyOnUnwrapOfEncryptedBlob) {
   write_cfg.encrypt_key = test_encrypt_key( );
   const envelope::envelope_t writer(write_cfg);
 
-  const envelope::envelope_t reader(envelope::config_t {.base64 = envelope::base64_mode_t::none});  // no encrypt_key configured
+  const envelope::envelope_t reader(envelope::config_t {.base64 = envelope::base64_mode_t::none});
 
   const auto wrapped = writer.wrap(to_bytes("payload"));
   ASSERT_TRUE(wrapped.has_value( )) << wrapped.error( );
@@ -269,13 +259,13 @@ TEST (Envelope, RejectsMissingEncryptKeyOnUnwrapOfEncryptedBlob) {
 }
 
 TEST (Envelope, WrapRejectsEncryptWithoutAValidKey) {
-  const envelope::envelope_t env(envelope::config_t {.base64 = envelope::base64_mode_t::none, .encrypt = true});  // encrypt_key left unset
+  const envelope::envelope_t env(envelope::config_t {.base64 = envelope::base64_mode_t::none, .encrypt = true});
   const auto                 wrapped = env.wrap(to_bytes("payload"));
   EXPECT_FALSE(wrapped.has_value( ));
 }
 
 TEST (Envelope, WrapRejectsSignWithoutAKey) {
-  const envelope::envelope_t env(envelope::config_t {.base64 = envelope::base64_mode_t::none, .sign = true});  // sign_key left empty
+  const envelope::envelope_t env(envelope::config_t {.base64 = envelope::base64_mode_t::none, .sign = true});
   const auto                 wrapped = env.wrap(to_bytes("payload"));
   EXPECT_FALSE(wrapped.has_value( ));
 }

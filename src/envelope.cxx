@@ -20,8 +20,6 @@ constexpr uint8_t mask_sign     = 1u << 2;
 
 constexpr size_t header_size = magic_bytes.size( ) + 1;  // magic + mask byte
 
-// base64_mode_t::none never reaches here - callers only call this for the
-// two modes that are actually base64.
 constexpr detail::base64_alphabet_t alphabet_for (base64_mode_t mode) {
   return mode == base64_mode_t::url_safe ? detail::base64_alphabet_t::url_safe : detail::base64_alphabet_t::standard;
 }
@@ -52,11 +50,7 @@ std::expected<std::vector<std::byte>, std::string> envelope_t::wrap (std::span<c
     payload = std::move(*encrypted);
   }
 
-  // The mask has to be complete - including the sign bit - before it's
-  // written, since (when signing is on) the signature computed below
-  // covers this header too. Setting the sign bit only after signing would
-  // leave it outside what's actually authenticated - exactly the downgrade
-  // hole described in envelope.hxx.
+  /// See hard_decisions_we_did/06-envelope-layer-order.md
   const uint8_t mask = static_cast<uint8_t>((config_.compress ? mask_compress : 0) | (config_.encrypt ? mask_encrypt : 0) | (config_.sign ? mask_sign : 0));
 
   std::vector<std::byte> framed;
@@ -96,10 +90,6 @@ std::expected<std::vector<std::byte>, std::string> envelope_t::unwrap (std::span
   }
   const uint8_t mask = static_cast<uint8_t>(framed[magic_bytes.size( )]);
 
-  // Everything from here on is bounded by body_end, which shrinks to
-  // exclude the trailing signature *before* that signature is verified -
-  // so nothing past this point ever looks at, let alone acts on, bytes
-  // that weren't covered by a successful verification.
   size_t body_end = framed.size( );
 
   if ( mask & mask_sign ) {
