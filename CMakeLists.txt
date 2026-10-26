@@ -1,13 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Kept deliberately self-contained: nothing here includes or links against
-# anything under src/ in the parent repo - see the note at the top of
-# include/envelope/envelope.hxx. Its only dependencies (OpenSSL, zlib) are
-# third-party, the same as any standalone consumer of this library would
-# need. cmake_minimum_required() is re-asserted here (redundant when
-# add_subdirectory()'d from a parent that already required a higher
-# version, as this project does) so this file also works as-is if this
-# directory is ever lifted out into its own top-level project.
+# This library is self-contained; its only dependencies (OpenSSL, zlib) are
+# third-party. This CMake project works both standalone and as a subdirectory.
 
 project(envelope LANGUAGES CXX)
 
@@ -27,6 +21,9 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 target_link_libraries(${TARGET_ENVELOPE} PRIVATE OpenSSL::Crypto ZLIB::ZLIB)
 
+if (NOT DEFINED BUILD_TESTS)
+    set(BUILD_TESTS ON)
+endif ()
 option(ENVELOPE_BUILD_TESTS "Build envelope's own tests" ${BUILD_TESTS})
 if (ENVELOPE_BUILD_TESTS)
     enable_testing()
@@ -44,6 +41,6 @@ if (DOXYGEN_FOUND)
     add_custom_target(envelope_docs
             COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMENT "Generating HTML documentation with Doxygen into libs/envelope/docs/html/"
+            COMMENT "Generating HTML documentation with Doxygen into docs/html/"
             VERBATIM)
 endif ()

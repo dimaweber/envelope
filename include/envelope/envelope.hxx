@@ -22,7 +22,7 @@ public:
   /// "not configured" key is represented instead.
   aes_256_key_t ( ) = default;
 
-  aes_256_key_t (const std::array<std::byte, aes_256_key_size>& bytes) : bytes_(bytes) {  // NOLINT: implicit by design
+  /*implicit*/ aes_256_key_t (const std::array<std::byte, aes_256_key_size>& bytes) : bytes_(bytes) {
   }
 
   aes_256_key_t (const aes_256_key_t&)            = default;
@@ -71,7 +71,7 @@ class secure_bytes_t {
 public:
   secure_bytes_t ( ) = default;
 
-  secure_bytes_t (std::vector<std::byte> bytes) : bytes_(std::move(bytes)) {  // NOLINT: implicit by design
+  /*implicit*/ secure_bytes_t (std::vector<std::byte> bytes) : bytes_(std::move(bytes)) {
   }
 
   secure_bytes_t(const secure_bytes_t&)                = default;

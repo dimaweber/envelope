@@ -145,15 +145,18 @@ cleanly, leaving nothing behind in the moved-from object to cleanse.
 OpenSSL (`libcrypto`, for HMAC/AES-GCM/`CRYPTO_memcmp`/`RAND_bytes`/`OPENSSL_cleanse`) and
 zlib. `<openssl/crypto.h>` (for `OPENSSL_cleanse`) is included directly by the public
 `envelope.hxx`, not just internally by `src/crypto.cxx` — the only third-party header
-that leaks into the public API surface. Both
-third-party — nothing here depends on anything else in whichever repository it's
-currently vendored inside (see the note at the top of
-`include/envelope/envelope.hxx`), so this directory can be lifted into its own project
-unmodified.
+that leaks into the public API surface.
 
 ## Building
 
-Currently built as part of the parent project via `add_subdirectory(libs/envelope)`,
-producing a static library target named `envelope`. See [`tests.md`](tests.md) for how
-its own test suite builds and runs, including what's still missing for a fully
-standalone (outside the parent project) build.
+This is a standalone CMake project producing a static library target named `envelope`.
+It can also be added as a CMake subdirectory. Build and run the library's tests with:
+
+```
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+OpenSSL, zlib, and GTest (for tests, enabled by default) must be available. See
+[`tests.md`](tests.md) for details.
